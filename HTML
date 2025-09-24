@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Bantuan Sosial Dinsos - Versi Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .chart-container { height: 350px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 500px; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .fade-in { animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-green-50">
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-center"><i class="fas fa-sign-in-alt text-blue-600"></i> Login Dashboard</h2>
+            <form onsubmit="login(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Username</label>
+                    <input type="text" id="username" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" class="w-full p-2 border rounded-md" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"><i class="fas fa-lock-open"></i> Masuk</button>
+            </form>
+            <p class="text-center mt-3 text-sm text-gray-600">Demo: admin / dinsos123</p>
+        </div>
+    </div>
+
+    <!-- Main Content (Hidden until login) -->
+    <div id="mainContent" style="display: none;">
+        <div class="container mx-auto p-4 max-w-7xl">
+            <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-md">
+                <h1 class="text-3xl font-bold text-blue-800"><i class="fas fa-chart-dashboard"></i> Dashboard Bantuan Sosial Dinsos</h1>
+                <div>
+                    <button onclick="addNewData()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"><i class="fas fa-plus"></i> Tambah Data</button>
+                    <button onclick="exportCSV()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md mr-2"><i class="fas fa-download"></i> Export CSV</button>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </div>
+            </header>
+
+            <!-- Filter -->
+            <div class="p-4 bg-white rounded-lg shadow-md mb-6">
+                <h3 class="text-lg font-bold mb-4"><i class="fas fa-filter"></i> Filter & Search</h3>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                    <input type="text" id="searchInput" placeholder="Cari nama/NIK..." class="p-2 border rounded-md" onkeyup="applyFilter()">
+                    <select id="filterKecamatan" class="p-2 border rounded-md" onchange="applyFilter()">
+                        <option value="">Semua Kecamatan</option>
+                        <option value="Cicendo">Cicendo</option>
+                        <option value="Buahbatu">Buahbatu</option>
+                        <option value="Cibeunying">Cibeunying</option>
+                    </select>
+                    <select id="filterJenis" class="p-2 border rounded-md" onchange="applyFilter()">
+                        <option value="">Semua Jenis Bantuan</option>
+                        <option value="PKH">PKH</option>
+                        <option value="KIS">KIS</option>
+                        <option value="BPNT">BPNT</option>
+                    </select>
+                    <select id="filterPeriode" class="p-2 border rounded-md" onchange="applyFilter()">
+                        <option value="">Semua Periode</option>
+                        <option value="2023-Q1">2023-Q1</option>
+                        <option value="2023-Q2">2023-Q2</option>
+                        <option value="2023-Q3">2023-Q3</option>
+                    </select>
+                    <select id="filterStatus" class="p-2 border rounded-md" onchange="applyFilter()">
+                        <option value="">Semua Status</option>
+                        <option value="Terverifikasi">Terverifikasi</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <button onclick="resetFilter()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"><i class="fas fa-refresh"></i> Reset</button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading"><i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i> Memuat data...</div>
+
+            <!-- Grafik Dashboard -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-chart-bar"></i> Per Kecamatan</h2>
+                    <canvas id="barChart" class="chart-container"></canvas>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-chart-pie"></i> Jenis Bantuan</h2>
+                    <canvas id="pieChart" class="chart-container"></canvas>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800"><i class="fas fa-chart-line"></i> Tren Per Periode</h2>
+                    <canvas id="lineChart" class="chart-container"></canvas>
+                </div>
+            </div>
+
+            <!-- Tabel Data -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <h2 class="text-xl font-semibold p-4 border-b border-gray-200 text-gray-800" id="tableTitle">Data Penerima Bantuan (<span id="totalCount">0</span> entri)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIK</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kecamatan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jenis Bantuan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Periode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Data akan diisi oleh JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="p-4 bg-gray-50 flex justify-between items-center">
+                    <span class="text-sm text-gray-700">Menampilkan <span id="pageInfo"></span> dari <span id="totalPages"></span> halaman</span>
+                    <div class="flex space-x-2">
+                        <button onclick="prevPage()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50" id="prevBtn" disabled><i class="fas fa-chevron-left"></i></button>
+                        <span id="pageNum" class="px-3 py-1 bg-white border rounded">1</span>
+                        <button onclick="nextPage()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50" id="nextBtn"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="mt-8 text-center text-gray-600 p-4 bg-white rounded-lg shadow-md">
+                <p><i class="fas fa-heart text-red-500"></i> Dashboard untuk Proyek Magang Dinsos | Versi 2.0 - Dibuat dengan HTML, Tailwind, Chart.js & LocalStorage</p>
+                <p class="text-sm">Total Data Tersimpan: <span id="storedCount">0</span></p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="dataModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4"><i class="fas fa-edit"></i> Tambah Data Penerima</h2>
+            <form onsubmit="saveData(event)">
+                <input type="hidden" id="editId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Nama</label>
+                    <input type="text" id="nama" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">NIK</label>
+                    <input type="text" id="nik" class="w-full p-2 border rounded-md" required maxlength="16">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Alamat</label>
+                    <input type="text" id="alamat" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Kecamatan</label>
+                    <select id="kecamatan" class="w-full p-2 border rounded-md" required>
+                        <option value="Cicendo">Cicendo</option>
+                        <option value="Buahbatu">Buahbatu</option>
+                        <option value="Cibeunying">Cibeunying</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Kelurahan</label>
+                    <input type="text" id="kelurahan" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Jenis Bantuan</label>
+                    <select id="jenis_bantuan" class="w-full p-2 border rounded-md" required>
+                        <option value="PKH">PKH</option>
+                        <option value="KIS">KIS</option>
+                        <option value="BPNT">BPNT</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Periode</label>
+                    <select id="periode" class="w-full p-2 border rounded-md" required>
+                        <option value="2023-Q1">2023-Q1</option>
+                        <option value="2023-Q2">2023-Q2</option>
+                        <option value="2023-Q3">2023-Q3</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Status</label>
+                    <select id="status" class="w-full p-2 border rounded-md" required>
+                        <option value="Terverifikasi">Terverifikasi</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">Batal</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"><i class="fas fa-save"></i> Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi Data (Load dari localStorage atau dummy)
+        let allData = JSON.parse(localStorage.getItem('penerimaData')) || [
+            { id: 1, nama: "Ahmad Santoso", nik: "1234567890123456", alamat: "Jl. Merdeka No. 10", kecamatan: "Cicendo", kelurahan: "Cicendo", jenis_bantuan: "PKH", periode: "2023-Q1", status: "Terverifikasi" },
+            { id: 2, nama: "Siti Nurhaliza", nik: "2345678901234567", alamat: "Jl. Sudirman No. 20", kecamatan: "Cicendo", kelurahan: "Cicendo", jenis_bantuan: "KIS", periode: "2023-Q1", status: "Terverifikasi" },
+            { id: 3, nama: "Budi Hartono", nik: "3456789012345678", alamat: "Jl. Gatot Subroto No. 30", kecamatan: "Buahbatu", kelurahan: "Buahbatu", jenis_bantuan: "PKH", periode: "2023-Q2", status: "Pending" },
+            { id: 4, nama: "Dewi Sartika", nik: "4567890123456789", alamat: "Jl. Ahmad Yani No. 40", kecamatan: "Buahbatu", kelurahan: "Buahbatu", jenis_bantuan: "BPNT", periode: "2023-Q1", status: "Terverifikasi" },
+            { id: 5, nama: "Eko Prasetyo", nik: "5678901234567890", alamat: "Jl. Raya Cilember No. 50", kecamatan: "Cibeunying", kelurahan: "Cibeunying", jenis_bantuan: "KIS", periode: "2023-Q2", status: "Terverifikasi" },
+            { id: 
