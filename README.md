@@ -1,5 +1,3 @@
-# SIBANSOS
-SIBANSOS (Sistem Informasi Bantuan Sosial) – Aplikasi berbasis web untuk pendataan, monitoring, dan visualisasi penyaluran bantuan sosial.
 # SIBANSOS - Sistem Informasi Bantuan Sosial
 
 SIBANSOS adalah sistem informasi web sederhana untuk monitoring dan pengelolaan data penerima bantuan sosial (bansos) di Dinas Sosial (Dinsos). Dibuat dengan React + Tailwind CSS untuk proyek magang.
